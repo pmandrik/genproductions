@@ -118,6 +118,9 @@ make_gridpack () {
     
       cd $MGBASEDIRORIG
       cat $PRODHOME/patches/*.patch | patch -p1
+
+      cp -r $PRODHOME/Utilities/mg_plugins/* ./PLUGIN/.
+      ls PLUGIN
     
       if [ -e $CARDSDIR/${name}_loop_filter.py ]; then
         echo "Acitvating custom user loop filter"
@@ -146,8 +149,13 @@ make_gridpack () {
           export LSB_JOB_REPORT_MAIL="N"
       
           echo "set run_mode  1" >> mgconfigscript
+
           if [ "$queue" == "condor" ]; then
-            echo "set cluster_type condor" >> mgconfigscript
+            if [ "$LXPLUS" == "True" ]; then 
+              echo "set cluster_type LXPLUS_htcondor_cluster" >> mgconfigscript
+            else
+              echo "set cluster_type condor" >> mgconfigscript
+            fi
             echo "set cluster_queue None" >> mgconfigscript
           else
             echo "set cluster_type lsf" >> mgconfigscript
@@ -267,7 +275,13 @@ make_gridpack () {
        elif [ "$queue" == "condor" ]; then
          echo "cluster_queue = None" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
          echo "run_mode = 1" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
-         echo "cluster_type = condor" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
+
+         if [ "$LXPLUS" == "True" ]; then 
+            echo "cluster_type = LXPLUS_htcondor_cluster" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
+         else
+            echo "cluster_type = condor" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
+         fi
+         #  echo "cluster_type = condor" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
        fi
     
       # Previous cluster_local_path setting  gets erased after
@@ -328,7 +342,8 @@ make_gridpack () {
           echo "Reusing existing process directory - be careful!"
         else
           echo "Reusing an existing process directory ${name} is not actually supported in production at the moment.  Please clean or move the directory and start from scratch."
-          if [ "${BASH_SOURCE[0]}" != "${0}" ]; then return 1; else exit 1; fi
+          echo "Continue ... - be careful!"
+          # if [ "${BASH_SOURCE[0]}" != "${0}" ]; then return 1; else exit 1; fi
         fi
       fi
       
@@ -349,17 +364,17 @@ make_gridpack () {
     
     fi  
     
-    if [ -d gridpack ]; then
-      rm -rf gridpack
-    fi
-    
-    if [ -d processtmp ]; then
-      rm -rf processtmp
-    fi
-    
-    if [ -d process ]; then
-      rm -rf process
-    fi
+    #if [ -d gridpack ]; then
+    #  rm -rf gridpack
+    #fi
+    #
+    #if [ -d processtmp ]; then
+    #  rm -rf processtmp
+    #fi
+    #
+    #if [ -d process ]; then
+    #  rm -rf process
+    #fi
     
     if [ ! -d ${name} ]; then
       echo "Process output directory ${name} not found.  Either process generation failed, or the name of the output did not match the process name ${name} provided to the script."
@@ -600,6 +615,7 @@ make_gridpack () {
 set -e
 
 #First you need to set couple of settings:
+LXPLUS="True"
 
 name=${1}
 
@@ -663,6 +679,7 @@ if [ -z ${jobstep} ]; then
 fi
 
 #Check values of jobstep:
+echo "jobstep = "$jobstep
 if [ "${jobstep}" == "ALL" ] || [ "${jobstep}" == "CODEGEN" ] || [ "${jobstep}" == "INTEGRATE" ] || [ "${jobstep}" == "MADSPIN" ]; then
     echo "Running gridpack generation step ${jobstep}"
 else
