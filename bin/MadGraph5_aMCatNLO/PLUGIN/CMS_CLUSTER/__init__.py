@@ -77,7 +77,7 @@ class CMSCondorCluster(CondorCluster):
         self.hold_list = os.environ.get("CONDOR_RELEASE_HOLDCODES", "")
         self.max_shadows = os.environ.get("CONDOR_RELEASE_HOLDCODES_SHADOW_LIM", "")
         self.walltimes = os.environ.get("CONDOR_SET_MAXWALLTIMES", "")
-
+        self.spool = False
     def query(self, ids, ads=[], lim=-1):
         """Query the Schedd via HTCondor Python API"""
         q = self.schedd.query(
@@ -260,7 +260,10 @@ class CMSCondorCluster(CondorCluster):
                 'output_files':output_files}
 
         #open('submit_condor','w').write(text % dico)
-        a = subprocess.Popen(['condor_submit'], stdout=subprocess.PIPE,
+        cmd = ['condor_submit']
+        if(self.spool):
+            cmd.append("-spool")
+        a = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                              stdin=subprocess.PIPE)
         output, _ = a.communicate(text % dico)
         #output = a.stdout.read()
@@ -334,7 +337,9 @@ class CMSCondorCluster(CondorCluster):
                     if not released:
                         self.hold_msg = "ClusterId %s with HoldReason: %s" % (str(id), job["HoldReason"])
                         fail += 1
-                elif status != 'C':
+                elif status == 'C' and self.spool:
+                    self.retrieve_output(id)
+                else:
                     fail += 1
 
         for id in list(self.submitted_ids):
@@ -346,6 +351,26 @@ class CMSCondorCluster(CondorCluster):
                     idle += 1
 
         return idle, run, self.submitted - (idle+run+fail), fail
+
+    def retrieve_output(self,id):
+        a = subprocess.Popen(['condor_transfer_data',str(id)], stdout=subprocess.PIPE,
+                             stdin=subprocess.PIPE)
+        output, err_ = a.communicate()
+        print id, output
+
+class CMSCondorSpoolCluster(CMSCondorCluster):
+    """Basic class for dealing with cluster submission"""
+
+    name = 'condor'
+    job_id = 'CONDOR_ID'
+    condor_q_max_retries = int(os.environ.get("CONDOR_QUERY_MAX_RETRIES",10))
+    condor_q_sleep_per_retry = int(os.environ.get("CONDOR_QUERY_SLEEP_PER_RETRY",10))
+
+    def __init__(self, *args, **opt):
+        """Init the cluster """
+
+        super(CMSCondorSpoolCluster, self).__init__(self, *args, **opt)
+        self.spool = True
 
 class CMSLSFCluster(LSFCluster):
     """Basic class for dealing with cluster submission"""
@@ -675,7 +700,7 @@ new_output = {}
 #    example new_cluster = {'mycluster': MYCLUSTERCLASS}
 #    allow "set cluster_type mycluster" in madgraph
 #    MYCLUSTERCLASS should inherated from madgraph.various.cluster.Cluster
-new_cluster = {'cms_condor': CMSCondorCluster, 'cms_lsf':CMSLSFCluster}
+new_cluster = {'cms_condor': CMSCondorCluster, 'cms_condor_spool': CMSCondorSpoolCluster, 'cms_lsf':CMSLSFCluster}
 
 
 # 3. Define a new interface (allow to add/modify MG5 command)
