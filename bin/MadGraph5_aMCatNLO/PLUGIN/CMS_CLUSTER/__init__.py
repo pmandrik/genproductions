@@ -335,8 +335,10 @@ class CMSCondorCluster(CondorCluster):
                             if self.max_shadows else \
                             self.release_holdcodes(id, self.hold_list)
                     if not released:
-                        self.hold_msg = "ClusterId %s with HoldReason: %s" % (str(id), job["HoldReason"])
-                        fail += 1
+                        reason = job["HoldReason"]
+                        if not ("Spool" in reason):
+                            self.hold_msg = "ClusterId %s with HoldReason: %s" % (str(id), job["HoldReason"])
+                            fail += 1
                 elif status == 'C' and self.spool:
                     self.retrieve_output(id)
                 else:
@@ -359,7 +361,7 @@ class CMSCondorCluster(CondorCluster):
         print id, output
 
 class CMSCondorSpoolCluster(CMSCondorCluster):
-    """Basic class for dealing with cluster submission"""
+    """Same as CMSCondorCluster, except that we use 'spool' to transfer files."""
 
     name = 'condor'
     job_id = 'CONDOR_ID'
