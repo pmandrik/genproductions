@@ -150,6 +150,9 @@ make_gridpack () {
       
           echo "set run_mode  1" >> mgconfigscript
           if [ "$queue" == "condor" ]; then
+            echo "set cluster_type cms_condor" >> mgconfigscript
+            echo "set cluster_queue None" >> mgconfigscript
+          elif [ "$queue" == "condor_spool" ]; then
             echo "set cluster_type cms_condor_spool" >> mgconfigscript
             echo "set cluster_queue None" >> mgconfigscript
           else
@@ -268,6 +271,10 @@ make_gridpack () {
              echo "cluster_temp_path = `echo $RUNHOME`" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
          fi
        elif [ "$queue" == "condor" ]; then
+         echo "cluster_queue = None" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
+         echo "run_mode = 1" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
+         echo "cluster_type = cms_condor" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
+       elif [ "$queue" == "condor_spool" ]; then
          echo "cluster_queue = None" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
          echo "run_mode = 1" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
          echo "cluster_type = cms_condor_spool" >> ./$MGBASEDIRORIG/input/mg5_configuration.txt
