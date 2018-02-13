@@ -53,7 +53,22 @@ class LXPLUS_htcondor_cluster(cluster.CondorCluster):
                         logger.warning("condor_transfer_data " + cluster_id + "." + proc_id + " failded to fetch the spooled data")
                     else : logger.info("condor_transfer_data " + cluster_id + "." + proc_id + " fetch the spooled data ok")
                 elif status != 'C':
-                    logger.warning("condor job " + cluster_id + "." + proc_id + " has a failed state " + status)
+                    cmd_check_held = "condor_q -held " + cluster_id + "." + proc_id
+                    hold_status = misc.Popen([cmd_check_held], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    error = hold_status.stderr.read()
+                    if hold_status.returncode or error:
+                        raise ClusterManagmentError, 'condor_q -held returns error: %s' % error
+                    hold_output = ""
+                    for line in hold_status.stdout: hold_output += line + "\n"
+                    if hold_output.find("Spooling input data files") != -1:
+                        # "Spooled job have Held status code as well as failed jobs"
+                        idle += 1
+                        continue
+                    if hold_output.find(cluster_id + "." + proc_id) == -1:
+                        idle += 1
+                        continue
+                    
+                    logger.warning("condor job " + cluster_id + "." + proc_id + " has a failed state " + status + " with following report: \n " + hold_output )
                     fail += 1
 
         for id in list(self.submitted_ids):
